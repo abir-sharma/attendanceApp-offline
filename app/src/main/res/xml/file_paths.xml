@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Allow access to internal app storage -->
+    <files-path name="internal_student_images" path="StudentImages/" />
+
+    <!-- Allow access to external storage (app-specific) -->
+    <external-files-path name="external_student_images" path="StudentImages/" />
+</paths>
