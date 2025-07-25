@@ -20,7 +20,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.attendanceappoffline.common.LoginPreferenceManager
+import com.example.attendanceappoffline.presentaion.viewModels.AuthViewModel
 import com.example.attendanceappoffline.presentaion.viewModels.GlobalStateViewModel
+import com.example.attendanceappoffline.presentaion.viewModels.StudentViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -36,31 +39,61 @@ import java.util.*
 
 @Composable
 fun Navbar(selectedDate: String,
-           onSelectedDateChange: (String) -> Unit,
+//           onSelectedDateChange: (String) -> Unit,
            selectedClassName: String,
-           onSelectedClassNameChange: (String) -> Unit,
+//           onSelectedClassNameChange: (String) -> Unit,
            globalStateViewModel: GlobalStateViewModel,
-           studentViewModel: StudentViewModel
+           studentViewModel: StudentViewModel,
+           authViewModel: AuthViewModel
 ) {
-//    var selectedClass by remember { mutableStateOf("Select Class") }
-
+    val context = LocalContext.current
+    val loginPrefs = remember { LoginPreferenceManager(context) }
+    val isLoggedIn by loginPrefs.isLoggedIn.collectAsState(initial = false)
+//
+    LaunchedEffect(isLoggedIn) {
+        if (isLoggedIn) {
+            authViewModel.getClassesLocally()
+        }
+    }
     val calendar = Calendar.getInstance()
-    val classList by globalStateViewModel.classList.collectAsState()
-    Log.d("class",classList.toString())
+//    val classList by globalStateViewModel.classList.collectAsState()
+    val classList by authViewModel.classNames.collectAsState()
+    Log.d("classsssss",classList.toString())
 //    var selectedDate by remember { mutableStateOf(SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(calendar.time)) }
+//    val datePickerDialog = DatePickerDialog(
+//        LocalContext.current,
+//        { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
+//            calendar.set(year, month, dayOfMonth)
+//            val formattedDate = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(calendar.time)
+//            onSelectedDateChange(formattedDate)
+//            globalStateViewModel.updateDropdownDate(formattedDate) // <-- ✅ this updates ViewModel
+//
+//        },
+//        calendar.get(Calendar.YEAR),
+//        calendar.get(Calendar.MONTH),
+//        calendar.get(Calendar.DAY_OF_MONTH)
+//    )
+
     val datePickerDialog = DatePickerDialog(
-        LocalContext.current,
+        context,
         { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
             calendar.set(year, month, dayOfMonth)
             val formattedDate = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(calendar.time)
-            onSelectedDateChange(formattedDate)
-            globalStateViewModel.updateDropdownDate(formattedDate) // <-- ✅ this updates ViewModel
-
+//            onSelectedDateChange(formattedDate)
+            studentViewModel.updateSelectedDate(formattedDate)
+            globalStateViewModel.updateDropdownDate(formattedDate)
         },
         calendar.get(Calendar.YEAR),
         calendar.get(Calendar.MONTH),
         calendar.get(Calendar.DAY_OF_MONTH)
     )
+
+// ❌ Disallow future dates
+//    datePickerDialog.datePicker.maxDate = System.currentTimeMillis()
+
+// Then show the dialog
+//    datePickerDialog.show()
+
 
     Row(
         modifier = Modifier
@@ -107,8 +140,9 @@ fun Navbar(selectedDate: String,
                             text = { Text(className) },
                             onClick = {
 //                                selectedClass = className
-                                onSelectedClassNameChange(className)
-                                val parts = className.split(" ")
+//                                onSelectedClassNameChange(className)
+                                studentViewModel.updateSelectedClassNameWithSection(className)
+                                val parts = className.split("-")
 
                                 val sectionSplit = parts.last() // "B"
                                 val classNameSplit = parts.dropLast(1).joinToString(" ")

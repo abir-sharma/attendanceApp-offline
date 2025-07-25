@@ -43,6 +43,7 @@ import com.example.attendanceappoffline.data.StudentWithAttendance
 @Composable
 fun StudentCard(studentWithAttendance: StudentWithAttendance) {
     // UI colors based on presence
+    Log.d("studentCard",studentWithAttendance.toString())
     val borderColor = if (studentWithAttendance.isPresent == true) Color(0xFF73E2A3) else Color(0xFFFDA29B)
     val studentNameColor = if (studentWithAttendance.isPresent == true) Color(0xFF099250) else Color(0xFFD92D20)
     val studentNameBackgroundColor = if (studentWithAttendance.isPresent == true) Color(0xFFD3F8DF) else Color(0xFFFEE4E2)
@@ -88,7 +89,7 @@ fun StudentCard(studentWithAttendance: StudentWithAttendance) {
 
             Row {
                 Text(
-                    text = studentWithAttendance.student.firstName,
+                    text = studentWithAttendance.student.fullName,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -96,7 +97,7 @@ fun StudentCard(studentWithAttendance: StudentWithAttendance) {
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = studentWithAttendance.student.lastName,
+                    text = studentWithAttendance.student.rollNumber,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -118,7 +119,9 @@ fun StudentCard(studentWithAttendance: StudentWithAttendance) {
                 color = studentNameColor,
                 textAlign = TextAlign.Center
             )
+
         }
+
     }
 }
 
@@ -131,4 +134,3 @@ fun byteArrayToBitmap(byteArray: ByteArray?): Bitmap? {
         null
     }
 }
-

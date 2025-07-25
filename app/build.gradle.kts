@@ -3,7 +3,9 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
     id("kotlin-kapt") // Add this here
-    id("dagger.hilt.android.plugin") }
+    id("dagger.hilt.android.plugin")
+
+}
 
 android {
     namespace = "com.example.attendanceappoffline"
@@ -50,7 +52,8 @@ android {
         }
     }
     buildFeatures {
-        viewBinding =true
+        compose=true
+//        viewBinding =true
     }
 //    namespace = "com.ml.quaterion.facenetdetection"
 
@@ -58,12 +61,15 @@ android {
 
 dependencies {
 
+    implementation("io.socket:socket.io-client:2.0.0") // Must be the right version!
+
     implementation("com.google.dagger:hilt-android:2.50")
-    kapt("com.google.dagger:hilt-compiler:2.50")
+    kapt("com.google.dagger:hilt-android-compiler:2.50")
 
     // For Hilt and Jetpack ViewModel integration
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
     kapt("androidx.hilt:hilt-compiler:1.1.0")
+    implementation ("androidx.datastore:datastore-preferences:1.0.0")
 
 
     // retrofit
@@ -124,4 +130,7 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+}
+kapt {
+    correctErrorTypes = true
 }

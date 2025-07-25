@@ -7,16 +7,19 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.example.attendanceappoffline.data.Converters
 import com.example.attendanceappoffline.data.attendance.AttendanceDao
+import com.example.attendanceappoffline.data.source.local.dao.SchoolClassDao
 import com.example.attendanceappoffline.data.source.local.entity.AttendanceRecord
 import com.example.attendanceappoffline.data.source.local.entity.StudentEntity
 import com.example.attendanceappoffline.data.source.local.dao.StudentsDao
+import com.example.attendanceappoffline.data.source.local.entity.SchoolClassEntity
 
-@Database(entities = [StudentEntity::class, AttendanceRecord::class], version = 1, exportSchema = false)
+@Database(entities = [StudentEntity::class, AttendanceRecord::class,SchoolClassEntity::class], version = 1, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class MyDatabase : RoomDatabase() {
     abstract fun studentDao(): StudentsDao
     abstract fun attendanceDao(): AttendanceDao
 
+    abstract fun schoolClassDao(): SchoolClassDao
     companion object {
         @Volatile
         private var INSTANCE: MyDatabase? = null

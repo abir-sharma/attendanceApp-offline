@@ -12,6 +12,9 @@ import com.example.attendanceappoffline.data.source.local.entity.StudentEntity
 import com.example.attendanceappoffline.data.StudentWithAttendance
 import com.example.attendanceappoffline.data.source.local.dao.StudentsDao
 import com.example.attendanceappoffline.data.attendance.AttendanceDao
+import com.example.attendanceappoffline.domain.usecases.AttendanceUseCases
+import com.example.attendanceappoffline.domain.usecases.StudentUseCases
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,8 +23,9 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Locale
-
-class GlobalStateViewModel(private val faceDao: StudentsDao, private val attendanceDao: AttendanceDao): ViewModel() {
+import javax.inject.Inject
+@HiltViewModel
+class GlobalStateViewModel @Inject constructor(private val studentUseCases: StudentUseCases, private val attendanceUseCases: AttendanceUseCases): ViewModel() {
 
 //    init {
 //        loadFaceEmbeddings()
@@ -66,9 +70,15 @@ class GlobalStateViewModel(private val faceDao: StudentsDao, private val attenda
 
     fun updateClassListFromDatabase() {
         viewModelScope.launch {
-            val students = faceDao.getAllFaceEmbeddings()
+//            val students = faceDao.getAllFaceEmbeddings()
+//            val classNamesWithSections = students
+//                .map { "${it.className} ${it.section}" } // Combine className and section
+//                .distinct()
+//                .sorted()
+//            _classList.value = classNamesWithSections
+            val students=studentUseCases.getAllFaceEmbeddings()
             val classNamesWithSections = students
-                .map { "${it.className} ${it.section}" } // Combine className and section
+                .map { "${it.className}" } // Combine className and section
                 .distinct()
                 .sorted()
             _classList.value = classNamesWithSections
@@ -125,96 +135,105 @@ class GlobalStateViewModel(private val faceDao: StudentsDao, private val attenda
     }
 
 
-    fun recognizeFace(currentEmbedding: FloatArray,className: String,section: String,dropDown:String,firstName: String,lastName: String) {
-        Log.d("FaceRecognition", "recognizeFace() is called!")
-        viewModelScope.launch(Dispatchers.IO) {
-            val faces = faceDao.getAllEmbeddings(className,section)
-            Log.d("recoDebug",faces.toString())
-            var bestMatch: String? = null
-            var highestSimilarity = 0.0
+//    fun recognizeFace(currentEmbedding: FloatArray,className: String,section: String,dropDown:String,firstName: String,lastName: String) {
+//        Log.d("FaceRecognition", "recognizeFace() is called!")
+//        viewModelScope.launch(Dispatchers.IO) {
+////            val faces = faceDao.getAllEmbeddings(className,section)
+//            val faces=studentUseCases.getAllEmbeddings(className,section)
+//            Log.d("recoDebug",faces.toString())
+//            var bestMatch: String? = null
+//            var highestSimilarity = 0.0
+//
+//            var fN=""
+//            var lN=""
+//
+//            for (face in faces) {
+//                val similarity = cosineSimilarity(currentEmbedding, face.embedding)
+//                if (similarity > highestSimilarity && similarity > 0.8) {
+//                    highestSimilarity = similarity.toDouble()
+//                    bestMatch = face.fullName
+//                    fN = face.fullName
+////                    lN = face.lastName
+//                }
+//            }
+//            val similarityPercentage = (highestSimilarity * 100).toInt() // Convert to percentage
+//
+//            if (bestMatch != null && fN.isNotEmpty() && lN.isNotEmpty() && (similarityPercentage>=80) ) {
+//                Log.d("bestMatch","update attendance called")
+//                Log.d("fn",fN+lN)
+//
+////                val attendanceRecord = attendanceDao.getAttendanceForDateAndStudent(className, dropDown, firstName = fN,lastName= lN)
+////                val studentIdFromDetails= faceDao.getStudentIdByDetails(className,section,firstName,lastName)
+//                val attendanceRecord=attendanceUseCases.getAttendanceForDateAndStudent(className,dropDown,fullName=fN)
+//                val studentIdFromDetails=studentUseCases.getStudentIdByDetails(className,section,firstName)
+//                val attendanceEntity= AttendanceRecord(studentHash = studentIdFromDetails, status = "present", date = dropDown, schoolId = "c", className = "s" )
+//                if (attendanceRecord == null) {
+////                    attendanceDao.insertAttendanceRecord(attendanceEntity)
+//                    attendanceUseCases.insertAttendanceRecord(attendanceEntity)
+//                    loadStudentsWithAttendance(className, date = dropDown)
+//                }
+//            }
+//
+//            Log.d("FaceRecognition", "Best match: ${bestMatch ?: "No match"}")
+//            withContext(Dispatchers.Main) {
+//                _recognizedName.value = if (bestMatch != null) {
+//                    "$bestMatch ($similarityPercentage%)"
+//                } else {
+//                    "Unknown"
+//                }
+//
+//                Log.d("FaceRecognition", "Updated recognizedName: ${_recognizedName.value}")
+//
+//            }
+//        }
+//    }
 
-            var fN=""
-            var lN=""
-
-            for (face in faces) {
-                val similarity = cosineSimilarity(currentEmbedding, face.embedding)
-                if (similarity > highestSimilarity && similarity > 0.8) {
-                    highestSimilarity = similarity.toDouble()
-                    bestMatch = face.firstName+" "+face.lastName
-                    fN = face.firstName
-                    lN = face.lastName
-                }
-            }
-            val similarityPercentage = (highestSimilarity * 100).toInt() // Convert to percentage
-
-            if (bestMatch != null && fN.isNotEmpty() && lN.isNotEmpty() && (similarityPercentage>=80) ) {
-                Log.d("bestMatch","update attendance called")
-                Log.d("fn",fN+lN)
-
-                val attendanceRecord = attendanceDao.getAttendanceForDateAndStudent(className, dropDown, firstName = fN,lastName= lN)
-                val studentIdFromDetails= faceDao.getStudentIdByDetails(className,section,firstName,lastName)
-                val attendanceEntity= AttendanceRecord(studentId = studentIdFromDetails, isPresent = true, date = dropDown )
-                if (attendanceRecord == null) {
-                    attendanceDao.insertAttendanceRecord(attendanceEntity)
-                    loadStudentsWithAttendance(className, date = dropDown)
-                }
-            }
-
-            Log.d("FaceRecognition", "Best match: ${bestMatch ?: "No match"}")
-            withContext(Dispatchers.Main) {
-                _recognizedName.value = if (bestMatch != null) {
-                    "$bestMatch ($similarityPercentage%)"
-                } else {
-                    "Unknown"
-                }
-
-                Log.d("FaceRecognition", "Updated recognizedName: ${_recognizedName.value}")
-
-            }
-        }
-    }
-
-    fun registerFace(studentId:String, firstName: String,lastName:String, embedding: FloatArray,faceBitmap: Bitmap,className:String,section:String) {
+    fun registerFace(studentId:String, fullName: String,rollNumber:String, embedding: FloatArray,faceBitmap: Bitmap,className:String,section:String) {
         val imageBytes = bitmapToByteArray(faceBitmap)
         viewModelScope.launch {
-            val studentEntity = StudentEntity(studentId = studentId, firstName = firstName, lastName = lastName, embedding = embedding, image = imageBytes, className = className, section = section )
-            val attendanceEntity= AttendanceRecord(studentId = studentId, isPresent = true, date = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(calendar.time) )
-            faceDao.insertEmbedding(studentEntity)
-            attendanceDao.insertAttendanceRecord(attendanceEntity)
+            val studentEntity = StudentEntity(studentHash = studentId, fullName = fullName, rollNumber = rollNumber, embedding = embedding, image = imageBytes, className = className+"-"+section, schoolId = "" )
+            val attendanceEntity= AttendanceRecord(studentHash = studentId, status = "present", date = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(calendar.time), className = "s", schoolId = "s" )
+//            faceDao.insertEmbedding(studentEntity)
+//            attendanceDao.insertAttendanceRecord(attendanceEntity)
+            studentUseCases.insertEmbedding(studentEntity)
+            attendanceUseCases.insertAttendanceRecord(attendanceEntity)
         }
     }
 
-    fun loadFaceEmbeddings(className:String,section: String) {
-        Log.d("face loaded run","for $className and $section")
+    fun loadFaceEmbeddings(className:String,schoolId:String) {
+        Log.d("classNameipasses",className)
+        Log.d("schoolId",schoolId)
         viewModelScope.launch(Dispatchers.IO) {
-            val faces = faceDao.getAllEmbeddings(className,section) // Fetch from Room DB
+//            val faces = faceDao.getAllEmbeddings(className,section) // Fetch from Room DB
+            val faces=studentUseCases.getAllEmbeddings(className,schoolId)
             _faceEmbeddings.value = faces // Update StateFlow
         }
     }
 
-    fun loadStudentsWithAttendance(className: String, date: String) {
-        Log.d("debugData",className+" "+date)
-        val parts = className.split(" ")
-        Log.d("debugData",parts.toString())
-        val className1 = parts.getOrNull(0) ?: ""
-        val className2 = parts.getOrNull(1) ?: ""
-        val sectionSplit = parts.getOrNull(2) ?: ""
-
-        Log.d("debugData",className1+ " "+className2)
-        Log.d("debugData",sectionSplit)
-//        Log.d("debugData",sectionSplitt)
-        viewModelScope.launch {
-
-            attendanceDao.getStudentsWithAttendance(className1+" "+className2,sectionSplit, date)
-
-                .collect { studentList ->
-
-                    _studentsWithAttendance.value = studentList
-
-                    Log.d("studentsList",studentList.toString())
-                }
-        }
-    }
+//    fun loadStudentsWithAttendance(className: String, date: String) {
+//        Log.d("debugData",className+" "+date)
+//        val parts = className.split(" ")
+//        Log.d("debugData",parts.toString())
+//        val className1 = parts.getOrNull(0) ?: ""
+//        val className2 = parts.getOrNull(1) ?: ""
+//        val sectionSplit = parts.getOrNull(2) ?: ""
+//
+//        Log.d("debugData",className1+ " "+className2)
+//        Log.d("debugData",sectionSplit)
+////        Log.d("debugData",sectionSplitt)
+//        viewModelScope.launch {
+//
+////            attendanceDao.getStudentsWithAttendance(className1+" "+className2,sectionSplit, date)
+//              attendanceUseCases.getStudentsWithAttendance(className1+" "+className2,sectionSplit,date)
+//
+//                .collect { studentList ->
+//
+//                    _studentsWithAttendance.value = studentList
+//
+//                    Log.d("studentsList",studentList.toString())
+//                }
+//        }
+//    }
 
 private fun cosineSimilarity(vec1: FloatArray, vec2: FloatArray): Float {
     val dotProduct = vec1.zip(vec2).sumOf { (a, b) -> (a * b).toDouble() }.toFloat()

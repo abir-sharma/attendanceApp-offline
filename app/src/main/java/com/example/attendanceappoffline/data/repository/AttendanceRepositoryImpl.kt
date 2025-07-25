@@ -1,10 +1,12 @@
 package com.example.attendanceappoffline.data.repository
 
 
+import android.net.http.HttpException
+import android.util.Log
 import com.example.attendanceappoffline.data.source.local.entity.AttendanceRecord
 import com.example.attendanceappoffline.data.StudentWithAttendance
 import com.example.attendanceappoffline.data.attendance.AttendanceDao
-import com.example.attendanceappoffline.data.source.remote.AttendanceRemoteRepository
+import com.example.attendanceappoffline.data.source.remote.repository.AttendanceRemoteRepository
 import com.example.attendanceappoffline.data.source.remote.dto.AttendanceDto
 import com.example.attendanceappoffline.domain.repository.AttendanceRepository
 import kotlinx.coroutines.flow.Flow
@@ -12,7 +14,7 @@ import javax.inject.Inject
 
 class AttendanceRepositoryImpl @Inject constructor(
     private val dao: AttendanceDao,
-    private val apiService: AttendanceRemoteRepository
+    private val api: AttendanceRemoteRepository
 ) : AttendanceRepository {
 
     override suspend fun insertAttendance(record: AttendanceRecord) {
@@ -26,29 +28,27 @@ class AttendanceRepositoryImpl @Inject constructor(
     override suspend fun getAttendanceForDateAndStudent(
         className: String,
         date: String,
-        firstName: String,
-        lastName: String
+        fullName: String,
+        schoolId: String
     ): AttendanceRecord? {
-        return dao.getAttendanceForDateAndStudent(className, date, firstName, lastName)
+        return dao.getAttendanceForDateAndStudent(className, date,fullName , schoolId)
     }
 
     override suspend fun updateAttendance(
         className: String,
-        section: String,
-        firstName: String,
-        lastName: String,
+        fullName: String,
+        rollNumber: String,
         date: String,
-        isPresent: Boolean
+        status: String
     ) {
-        dao.updateAttendance(className, section, firstName, lastName, date, isPresent)
+        dao.updateAttendance(className, fullName, rollNumber, date, status)
     }
 
     override fun getStudentsWithAttendance(
         className: String,
-        section: String,
         selectedDate: String
     ): Flow<List<StudentWithAttendance>> {
-        return dao.getStudentsWithAttendance(className, section, selectedDate)
+        return dao.getStudentsWithAttendance(className, selectedDate)
     }
 
     override suspend fun getAttendanceByStudentIdAndDate(studentId: Int, date: String): AttendanceRecord? {
@@ -63,26 +63,44 @@ class AttendanceRepositoryImpl @Inject constructor(
         dao.markAsSynced(id)
     }
 
-    override suspend fun syncAttendanceData() {
-        val unsynced = dao.getUnsyncedRecords()
-        unsynced.forEach { record ->
-            try {
-                val dtoList = listOf(record.toDto()) // Convert to expected type
-                apiService.syncAttendance(dtoList)   // Send as List<AttendanceDto>
-                dao.markAsSynced(record.id)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+    override suspend fun addAttendanceToDB(dto: AttendanceDto) {
+        Log.d("attendance in attendance impl",dto.toString())
+        try {
+            api.addAttendanceToDB(dto)
+        } catch (e: retrofit2.HttpException) {
+            Log.e("API", "HTTP ${e.code()}: ${e.response()?.errorBody()?.string()}")
+        } catch (e: Exception) {
+            Log.e("API", "Other error: ${e.localizedMessage}")
         }
+
+
+//        api.addAttendanceToDB(dto = dto)
     }
-    fun AttendanceRecord.toDto(): AttendanceDto {
-        return AttendanceDto(
-            id = this.id,
-            studentId = this.studentId,
-            date = this.date,
-            isPresent = this.isPresent
-        )
+
+    override suspend fun syncAttendanceData(dto: AttendanceDto) {
+        val unsynced = dao.getUnsyncedRecords()
+//        unsynced.forEach { record ->
+//            try {
+////                val dtoList = listOf(record.toDto()) // Convert to expected type
+//////                apiService.syncAttendance(dtoList)   // Send as List<AttendanceDto>
+////                dao.markAsSynced(record.id)
+//                api.syncAttendance()
+//                dao.markAsSynced(record.id)
+//            } catch (e: Exception) {
+//                e.printStackTrace()
+//            }
+//        }
+        api.syncAttendance(dto)
     }
+
+//    fun AttendanceRecord.toDto(): AttendanceDto {
+//        return AttendanceDto(
+//            id = this.id,
+//            studentId = this.studentId,
+//            date = this.date,
+//            isPresent = this.isPresent
+//        )
+//    }
 
 }
 

@@ -1,9 +1,7 @@
 package com.example.attendanceappoffline.presentaion.ui
 
-import AttendanceViewModel
 //import EmbeddedActivityScreen
 import Navbar
-import StudentViewModel
 import android.annotation.SuppressLint
 import android.content.res.Configuration
 import android.os.Handler
@@ -36,6 +34,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,18 +53,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
+import com.example.attendanceappoffline.common.LoginPreferenceManager
 //import com.example.attendanceappoffline.R
 //import com.ml.quaterion.facenetdetection.R
 import com.example.attendanceappoffline.domain.models.Student
 import com.example.attendanceappoffline.presentaion.viewModels.FaceRecognitionViewModel
 import com.example.attendanceappoffline.presentaion.viewModels.GlobalStateViewModel
+import com.example.attendanceappoffline.presentaion.viewModels.AttendanceViewModel
+import com.example.attendanceappoffline.presentaion.viewModels.AuthViewModel
+import com.example.attendanceappoffline.presentaion.viewModels.StudentViewModel
 import com.example.attendanceappoffline.utils.AddStudentForm
 import com.example.attendanceappoffline.utils.CameraCard
 import com.example.attendanceappoffline.utils.RequestCameraPermission
 import com.example.attendanceappoffline.utils.StudentCard
 import com.example.attendanceappoffline.utils.SummaryCard
 import com.example.attendanceappoffline.utils.Toast
+import io.socket.client.IO
+import io.socket.client.Socket
 import kotlinx.coroutines.delay
+import okhttp3.WebSocket
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -77,7 +83,8 @@ fun Home(
     studentViewModel: StudentViewModel,
     attendanceViewModel: AttendanceViewModel,
     globalStateViewModel: GlobalStateViewModel,
-    faceRecognitionViewModel: FaceRecognitionViewModel
+    faceRecognitionViewModel: FaceRecognitionViewModel,
+    authViewModel: AuthViewModel
     ) {
 
     var showDialog by remember { mutableStateOf(false) } // State for dialog visibility
@@ -86,41 +93,79 @@ fun Home(
 //    val students by globalStateViewModel.studentsWithAttendance.collectAsState()
     val students by attendanceViewModel.studentsWithAttendance.collectAsState()
 
-//    val classList = listOf(
-//        "Select Class",
-//        "1st Class B",
-//        "2nd Class C",
-//        "3rd Class A",
-//        "4th Class",
-//        "5th Class",
-//        "6th Class",
-//        "7th Class",
-//        "8th Class",
-//        "9th Class",
-//        "10th Class",
-//        "11th Class",
-//        "12th Class"    )
+    val context = LocalContext.current
+    val loginPrefs = remember { LoginPreferenceManager(context) }
+    val isLoggedIn by loginPrefs.isLoggedIn.collectAsState(initial = false)
 
-    var selectedDate by remember { mutableStateOf(SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(calendar.time)) }
-    var selectedClassNameWithSection by remember { mutableStateOf("Select Class") }
+    LaunchedEffect(isLoggedIn) {
+        if (isLoggedIn) {
+            authViewModel.loadSchoolId(loginPrefs)
+        }
+    }
+    val schoolId by authViewModel.schoolId.collectAsState()
+
+    Log.d("schoolIdHome",schoolId)
+//    var selectedDate by remember { mutableStateOf(SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(calendar.time)) }
+//    var selectedClassNameWithSection by remember { mutableStateOf("Select Class") }
+
+    val selectedClassNameWithSection = studentViewModel.selectedClassNameWithSection
+    val selectedDate = studentViewModel.selectedDate
+
 
 
     // Trigger data load when class/date changes
     LaunchedEffect(selectedClassNameWithSection, selectedDate) {
-        val lastSpaceIndex = selectedClassNameWithSection.lastIndexOf(" ")
+        val parts = selectedClassNameWithSection.split("-")
+        val className = parts.getOrNull(0) ?: ""
+        val section = parts.getOrNull(1) ?: ""
 
-        val className = selectedClassNameWithSection.substring(0, lastSpaceIndex)  // "12th Class"
-        val section = selectedClassNameWithSection.substring(lastSpaceIndex + 1)    // "B"
         globalStateViewModel.updateDropdownDate(date = selectedDate)
-        attendanceViewModel.loadStudentsWithAttendance(className = className , date = selectedDate, section = section)
-        globalStateViewModel.loadFaceEmbeddings(className=className,section=section)
+
+//        attendanceViewModel.loadStudentsWithAttendance(className = className+"-"+section , date = selectedDate)
+        attendanceViewModel.loadStudentsWithAttendance(className = selectedClassNameWithSection , date = selectedDate)
+        globalStateViewModel.loadFaceEmbeddings(className=className+"-"+section,schoolId)
+
+
     }
 
 
 
 //    val classList by globalStateViewModel.classList.collectAsState()
+    // this function returns list of classes in a school from db unique sorted and with hyphen (-)
     LaunchedEffect(Unit) {
         globalStateViewModel.updateClassListFromDatabase()
+    }
+
+    DisposableEffect(Unit) {
+        val options = IO.Options().apply {
+            reconnection = true
+            reconnectionAttempts = 5
+            reconnectionDelay = 1000
+            timeout = 5000
+            query = "schoolId=$schoolId"
+            transports= arrayOf(io.socket.engineio.client.transports.WebSocket.NAME)
+        }
+
+        val socket = IO.socket("http://172.30.208.1:4100", options)
+
+        socket.on(Socket.EVENT_CONNECT) {
+            Log.d("Socket", "Connected")
+        }
+        socket.on(Socket.EVENT_CONNECT_ERROR) {
+            Log.e("Socket", "Connection Error: ${it[0]}")
+        }
+        socket.on("deviceCount") {
+            Log.d("Socket", "Device count received: ${it[0]}")
+        }
+        socket.on(Socket.EVENT_CONNECT) {
+            Log.d("Socket", "Connected to server")
+            socket.emit("join", schoolId)
+        }
+        socket.connect()
+        onDispose {
+            socket.emit("leave", schoolId)
+            socket.disconnect()
+        }
     }
 
     RequestCameraPermission()  // 🔒 Ask permission once
@@ -136,11 +181,12 @@ fun Home(
      ) {
          Navbar(
              selectedDate = selectedDate,
-             onSelectedDateChange = { newDate -> selectedDate = newDate },
+//             onSelectedDateChange = { newDate -> selectedDate = newDate },
              selectedClassName = selectedClassNameWithSection,
-             onSelectedClassNameChange = { newClass -> selectedClassNameWithSection = newClass },
+//             onSelectedClassNameChange = { newClass -> selectedClassNameWithSection = newClass },
              globalStateViewModel,
-             studentViewModel
+             studentViewModel,
+             authViewModel
              )
          Column {
              Row(
@@ -157,7 +203,7 @@ fun Home(
                          .fillMaxHeight(),
                      verticalArrangement = Arrangement.SpaceBetween
                  ) {
-                      CameraCard(attendanceViewModel,studentViewModel,globalStateViewModel,faceRecognitionViewModel)
+                      CameraCard(attendanceViewModel,studentViewModel,globalStateViewModel,faceRecognitionViewModel, authViewModel = authViewModel)
 
                       SummaryCard(studentViewModel,selectedDate,selectedClassNameWithSection,attendanceViewModel)
                  }
@@ -233,8 +279,9 @@ fun Home(
         Dialog(onDismissRequest = { showDialog = false }) {
             AddStudentForm(studentViewModel,globalStateViewModel,
                 faceRecognitionViewModel,
+                authViewModel,
                 selectedClassNameWithSection = selectedClassNameWithSection,
-                onSelectedClassNameChange = { newClass -> selectedClassNameWithSection = newClass }
+//                onSelectedClassNameChange = { newClass -> selectedClassNameWithSection = newClass }
                 )
         }
     }

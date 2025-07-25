@@ -2,6 +2,7 @@ package com.example.attendanceappoffline.domain.repository
 
 import com.example.attendanceappoffline.data.source.local.entity.AttendanceRecord
 import com.example.attendanceappoffline.data.StudentWithAttendance
+import com.example.attendanceappoffline.data.source.remote.dto.AttendanceDto
 import kotlinx.coroutines.flow.Flow
 
 interface AttendanceRepository {
@@ -10,22 +11,20 @@ interface AttendanceRepository {
     suspend fun getAttendanceForDateAndStudent(
         className: String,
         date: String,
-        firstName: String,
-        lastName: String
+        fullName: String,
+        schoolId: String
     ): AttendanceRecord?
 
     suspend fun updateAttendance(
         className: String,
-        section: String,
-        firstName: String,
-        lastName: String,
+        fullName: String,
+        rollNumber: String,
         date: String,
-        isPresent: Boolean
+        status: String
     )
 
     fun getStudentsWithAttendance(
         className: String,
-        section: String,
         selectedDate: String
     ): Flow<List<StudentWithAttendance>>
 
@@ -35,5 +34,7 @@ interface AttendanceRepository {
 
     suspend fun markAsSynced(id: Int)
 
-    suspend fun syncAttendanceData()
+    suspend fun syncAttendanceData(dto: AttendanceDto)
+
+    suspend fun addAttendanceToDB(dto: AttendanceDto)
 }

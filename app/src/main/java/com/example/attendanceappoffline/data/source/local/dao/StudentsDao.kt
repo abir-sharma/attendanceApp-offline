@@ -11,26 +11,24 @@ interface StudentsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEmbedding(embedding: StudentEntity)
 
-    @Query("SELECT * FROM face_embeddings WHERE className = :className AND section = :section")
-    suspend fun getAllEmbeddings(className: String, section:String): List<StudentEntity>
+    @Query("SELECT * FROM face_embeddings WHERE className = :className AND schoolId = :schoolId")
+    suspend fun getAllEmbeddings(className: String,schoolId: String): List<StudentEntity>
 
     @Query("SELECT * FROM face_embeddings")
     suspend fun getAllFaceEmbeddings(): List<StudentEntity>
 
     @Query("""
-    SELECT studentId FROM face_embeddings 
+    SELECT studentHash FROM face_embeddings 
     WHERE className = :className
-    AND section = :section
-    AND firstName = :firstName 
-    AND lastName = :lastName
+    AND fullName = :fullName 
+    AND schoolId = :schoolId
     LIMIT 1
 """)
 
     suspend fun getStudentIdByDetails(
         className: String,
-        section: String,
-        firstName: String,
-        lastName: String
+        fullName: String,
+        schoolId: String
     ): String
 
 }

@@ -8,8 +8,14 @@ import androidx.annotation.OptIn
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import com.example.attendanceappoffline.presentaion.viewModels.FaceRecognitionViewModel
 import com.example.attendanceappoffline.presentaion.viewModels.GlobalStateViewModel
+import com.example.attendanceappoffline.presentaion.viewModels.AttendanceViewModel
+import com.example.attendanceappoffline.presentaion.viewModels.AuthViewModel
+import com.example.attendanceappoffline.presentaion.viewModels.StudentViewModel
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
@@ -27,7 +33,9 @@ class FaceAnalyzer(
     private val globalStateViewModel: GlobalStateViewModel,
     private  val attendanceViewModel: AttendanceViewModel,
     private val studentViewModel: StudentViewModel,
-    private val faceRecognitionViewModel: FaceRecognitionViewModel) : ImageAnalysis.Analyzer {
+    private val faceRecognitionViewModel: FaceRecognitionViewModel,
+    private val authViewModel: AuthViewModel
+) : ImageAnalysis.Analyzer {
 //    private val faceDetector = FaceDetection.getClient(
 //        com.google.mlkit.vision.face.FaceDetectorOptions.Builder()
 //            .setPerformanceMode(com.google.mlkit.vision.face.FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
@@ -38,6 +46,7 @@ class FaceAnalyzer(
 //    )
 
     private val faceDetector = FaceDetection.getClient()
+
 
 
     @OptIn(ExperimentalGetImage::class)
@@ -76,45 +85,32 @@ class FaceAnalyzer(
                             faceBitmap?.let { validFaceBitmap ->
                                 val embedding = getFaceEmbedding(validFaceBitmap)
                                 Log.d("FaceRecognition", "Got face embedding")
-
-                                if (faceRecognitionViewModel.isRegistering) {
+//                                if (faceRecognitionViewModel.isRegistering) {
+                                if (faceRecognitionViewModel.isRegistering.value) {
                                     faceRecognitionViewModel.registerFace(
                                         studentId = studentViewModel.studentId,
-                                        firstName = studentViewModel.firstName,
-                                        lastName = studentViewModel.lastName,
+                                        fullName = studentViewModel.fullName,
+                                        rollNumber = studentViewModel.rollNumber,
                                         embedding=embedding,
                                         faceBitmap = validFaceBitmap,
                                         className = studentViewModel.className,
-                                        section = studentViewModel.section
+                                        section = studentViewModel.section,
+                                        schoolId = studentViewModel.schoolId,
+                                        date = globalStateViewModel.dropdownDate
                                     )
-                                    faceRecognitionViewModel.updateIsRegistering(false)
-                                    attendanceViewModel.loadStudentsWithAttendance(className = studentViewModel.className, date = globalStateViewModel.dropdownDate, section = studentViewModel.section)
+//                                    faceRecognitionViewModel.updateIsRegistering(false)
+                                    faceRecognitionViewModel.setRegistering(false)
+                                    attendanceViewModel.loadStudentsWithAttendance(className = studentViewModel.className+"-"+studentViewModel.section, date = globalStateViewModel.dropdownDate)
+//                                    attendanceViewModel.loadStudentsWithAttendance(className = studentViewModel.selectedClassNameWithSection, date = globalStateViewModel.dropdownDate)
+
                                     Log.d("FaceRecognition", "Face registered successfully!")
                                 } else {
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        faceRecognitionViewModel.recognizeFace(currentEmbedding = embedding, facesFromDB = globalStateViewModel.faceEmbeddings.value, className = studentViewModel.className, section = studentViewModel.section, dropDown = globalStateViewModel.dropdownDate, firstName = studentViewModel.firstName, lastName = studentViewModel.lastName)
+                                        CoroutineScope(Dispatchers.IO).launch {
+                                        faceRecognitionViewModel.recognizeFace(currentEmbedding = embedding, facesFromDB = globalStateViewModel.faceEmbeddings.value, className = studentViewModel.className, section = studentViewModel.section, dropDown = globalStateViewModel.dropdownDate, schoolId = authViewModel.schoolId.value)
                                     }
                                 }
 
-//                                if (globalStateViewModel.isRegistering) {
-//                                    globalStateViewModel.registerFace(
-//                                        studentId = studentViewModel.studentId,
-//                                        firstName = studentViewModel.firstName,
-//                                        lastName = studentViewModel.lastName,
-//                                        embedding=embedding,
-//                                        faceBitmap = validFaceBitmap,
-//                                        className = studentViewModel.className,
-//                                        section = studentViewModel.section
-//                                    )
-//                                    globalStateViewModel.isRegistering = false
-//                                    faceRecognitionViewModel.updateIsRegistering(false)
-//                                    attendanceViewModel.loadStudentsWithAttendance(className = studentViewModel.className, date = globalStateViewModel.dropdownDate, section = studentViewModel.section)
-//                                    Log.d("FaceRecognition", "Face registered successfully!")
-//                                } else {
-//                                    CoroutineScope(Dispatchers.IO).launch {
-//                                        globalStateViewModel.recognizeFace(currentEmbedding = embedding, className = studentViewModel.className, section = studentViewModel.section, dropDown = globalStateViewModel.dropdownDate, firstName = studentViewModel.firstName, lastName = studentViewModel.lastName)
-//                                    }
-//                                }
+
                             }
                         }
                     }

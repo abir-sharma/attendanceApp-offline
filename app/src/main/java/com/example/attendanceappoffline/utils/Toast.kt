@@ -1,7 +1,6 @@
 package com.example.attendanceappoffline.utils
 
-import AttendanceViewModel
-import StudentViewModel
+import com.example.attendanceappoffline.presentaion.viewModels.StudentViewModel
 import android.os.Handler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.attendanceappoffline.presentaion.viewModels.AttendanceViewModel
 import com.example.attendanceappoffline.presentaion.viewModels.GlobalStateViewModel
 
 @Composable

@@ -11,6 +11,7 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
     <application
+        android:name=".MyApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -36,10 +37,10 @@
         </activity>
 
         <!-- FaceNet Detection Activity -->
-        <activity
-            android:name="com.ml.quaterion.facenetdetection.MainActivity2"
-            android:theme="@style/Theme.AppCompat.Light"
-            android:label="FaceNet Detection Activity" />
+<!--        <activity-->
+<!--            android:name="com.ml.quaterion.facenetdetection.MainActivity2"-->
+<!--            android:theme="@style/Theme.AppCompat.Light"-->
+<!--            android:label="FaceNet Detection Activity" />-->
 
         <!-- FileProvider for external storage access -->
         <provider

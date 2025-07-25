@@ -33,6 +33,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.attendanceappoffline.presentaion.viewModels.FaceRecognitionViewModel
 import com.example.attendanceappoffline.presentaion.viewModels.GlobalStateViewModel
+import com.example.attendanceappoffline.presentaion.viewModels.AttendanceViewModel
+import com.example.attendanceappoffline.presentaion.viewModels.AuthViewModel
+import com.example.attendanceappoffline.presentaion.viewModels.StudentViewModel
 import org.tensorflow.lite.Interpreter
 import java.io.FileInputStream
 import java.nio.MappedByteBuffer
@@ -41,7 +44,7 @@ import java.util.concurrent.Executors
 
 
 @Composable
-fun CameraPreview(globalStateViewModel: GlobalStateViewModel,attendanceViewModel: AttendanceViewModel,studentViewModel: StudentViewModel,faceRecognitionViewModel: FaceRecognitionViewModel) {
+fun CameraPreview(globalStateViewModel: GlobalStateViewModel,attendanceViewModel: AttendanceViewModel,studentViewModel: StudentViewModel,faceRecognitionViewModel: FaceRecognitionViewModel,authViewModel: AuthViewModel) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
@@ -68,15 +71,77 @@ fun CameraPreview(globalStateViewModel: GlobalStateViewModel,attendanceViewModel
 
     val tfliteModel = loadModelFile(context, "facenet.tflite")
 
-    val imageAnalyzer = remember {
-        ImageAnalysis.Builder().build().apply {
-            setAnalyzer(Executors.newSingleThreadExecutor(), FaceAnalyzer(tfliteModel,globalStateViewModel,attendanceViewModel, studentViewModel,faceRecognitionViewModel))
-        }
+//    val imageAnalyzer = remember {
+//        ImageAnalysis.Builder().build().apply {
+//            setAnalyzer(Executors.newSingleThreadExecutor(), FaceAnalyzer(tfliteModel,globalStateViewModel,attendanceViewModel, studentViewModel,faceRecognitionViewModel))
+//        }
+//    }
+
+    val previewView = remember { PreviewView(context) }  // Move to top
+
+    LaunchedEffect(Unit) {
+        cameraProviderFuture.addListener({
+            val cameraProvider = cameraProviderFuture.get()
+
+            if (cameraProvider.availableCameraInfos.isEmpty()) {
+                Toast.makeText(context, "No camera found", Toast.LENGTH_LONG).show()
+                globalStateViewModel.updateIsCameraAvailable()
+                return@addListener
+            }
+
+            try {
+                val preview = Preview.Builder().build().also {
+                    it.setSurfaceProvider(previewView.surfaceProvider) // ✅ Move here
+                }
+
+                val imageAnalyzer = ImageAnalysis.Builder().build().apply {
+                    setAnalyzer(
+                        Executors.newSingleThreadExecutor(),
+                        FaceAnalyzer(loadModelFile(context, "facenet.tflite"), globalStateViewModel, attendanceViewModel, studentViewModel, faceRecognitionViewModel, authViewModel = authViewModel)
+                    )
+                }
+
+                val cameraSelector = CameraSelector.Builder().build()
+
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(
+                    lifecycleOwner,
+                    cameraSelector,
+                    preview,
+                    imageAnalyzer
+                )
+
+                globalStateViewModel.updateIsCameraAvailable()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(context, "Failed to bind camera: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                globalStateViewModel.updateIsCameraAvailable()
+            }
+        }, ContextCompat.getMainExecutor(context))
     }
 
 //    LaunchedEffect(Unit) {
-//        if (cameraSelector != null) {
+//        cameraProviderFuture.addListener({
+//            val cameraProvider = cameraProviderFuture.get()
+//
+//            val availableCameras = cameraProvider.availableCameraInfos
+//            if (availableCameras.isEmpty()) {
+//                Toast.makeText(context, "No camera found. Try connecting USB camera.", Toast.LENGTH_LONG).show()
+//                globalStateViewModel.updateIsCameraAvailable()
+//                return@addListener
+//            }
+//
 //            try {
+//                val cameraSelector = CameraSelector.Builder().build() // fallback generic selector
+//                val imageAnalyzer = ImageAnalysis.Builder().build().apply {
+//                    setAnalyzer(
+//                        Executors.newSingleThreadExecutor(),
+//                        FaceAnalyzer(loadModelFile(context, "facenet.tflite"), globalStateViewModel, attendanceViewModel, studentViewModel, faceRecognitionViewModel)
+//                    )
+//                }
+//
+//                val preview = Preview.Builder().build()
+//
 //                cameraProvider.unbindAll()
 //                cameraProvider.bindToLifecycle(
 //                    lifecycleOwner,
@@ -87,52 +152,11 @@ fun CameraPreview(globalStateViewModel: GlobalStateViewModel,attendanceViewModel
 //                globalStateViewModel.updateIsCameraAvailable()
 //            } catch (e: Exception) {
 //                e.printStackTrace()
-//                Toast.makeText(context, "Error accessing camera.", Toast.LENGTH_LONG).show()
+//                Toast.makeText(context, "Failed to bind camera: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
 //                globalStateViewModel.updateIsCameraAvailable()
 //            }
-//        } else {
-//            Toast.makeText(context, "No available camera found. Please connect a webcam.", Toast.LENGTH_LONG).show()
-//            globalStateViewModel.updateIsCameraAvailable()
-//        }
+//        }, ContextCompat.getMainExecutor(context))
 //    }
-
-    LaunchedEffect(Unit) {
-        cameraProviderFuture.addListener({
-            val cameraProvider = cameraProviderFuture.get()
-
-            val availableCameras = cameraProvider.availableCameraInfos
-            if (availableCameras.isEmpty()) {
-                Toast.makeText(context, "No camera found. Try connecting USB camera.", Toast.LENGTH_LONG).show()
-                globalStateViewModel.updateIsCameraAvailable()
-                return@addListener
-            }
-
-            try {
-                val cameraSelector = CameraSelector.Builder().build() // fallback generic selector
-                val imageAnalyzer = ImageAnalysis.Builder().build().apply {
-                    setAnalyzer(
-                        Executors.newSingleThreadExecutor(),
-                        FaceAnalyzer(loadModelFile(context, "facenet.tflite"), globalStateViewModel, attendanceViewModel, studentViewModel, faceRecognitionViewModel)
-                    )
-                }
-
-                val preview = Preview.Builder().build()
-
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    lifecycleOwner,
-                    cameraSelector,
-                    preview,
-                    imageAnalyzer
-                )
-                globalStateViewModel.updateIsCameraAvailable()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                Toast.makeText(context, "Failed to bind camera: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-                globalStateViewModel.updateIsCameraAvailable()
-            }
-        }, ContextCompat.getMainExecutor(context))
-    }
 
 
     androidx.compose.runtime.DisposableEffect(Unit) {
@@ -149,16 +173,17 @@ fun CameraPreview(globalStateViewModel: GlobalStateViewModel,attendanceViewModel
 //            .padding(16.dp) // Optional padding
     ) {
         AndroidView(
-            factory = { context ->
-                val previewView = PreviewView(context).apply {
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,  // Take full width of parent Box
-                        ViewGroup.LayoutParams.MATCH_PARENT   // Take full height of parent Box
-                    )
-                }
-                preview.setSurfaceProvider(previewView.surfaceProvider)
-                previewView
-            },
+//            factory = { context ->
+//                val previewView = PreviewView(context).apply {
+//                    layoutParams = ViewGroup.LayoutParams(
+//                        ViewGroup.LayoutParams.MATCH_PARENT,  // Take full width of parent Box
+//                        ViewGroup.LayoutParams.MATCH_PARENT   // Take full height of parent Box
+//                    )
+//                }
+//                preview.setSurfaceProvider(previewView.surfaceProvider)
+//                previewView
+//            },
+            factory = { previewView }, // ✅ Use the remembered one
             modifier = Modifier
                 .fillMaxSize() // Make PreviewView match its parent (Box)
                 .clip(RoundedCornerShape(12.dp)) // Optional rounded corners

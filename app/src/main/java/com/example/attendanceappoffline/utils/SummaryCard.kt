@@ -1,7 +1,8 @@
 package com.example.attendanceappoffline.utils
 
-import AttendanceViewModel
-import StudentViewModel
+//import AttendanceViewModel
+import com.example.attendanceappoffline.presentaion.viewModels.AttendanceViewModel
+import com.example.attendanceappoffline.presentaion.viewModels.StudentViewModel
 import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -39,18 +40,16 @@ import androidx.compose.ui.unit.sp
 //)
 fun SummaryCard(studentViewModel: StudentViewModel,selectedDate:String,selectedClassName:String,attendanceViewModel: AttendanceViewModel) {
 //    val attendanceStats=studentViewModel.calculateAttendanceStats(selectedDate,selectedClassName)
-    val attendanceStats=attendanceViewModel.attendanceStats
+    val pC=attendanceViewModel.presentCountt
+    val aC=attendanceViewModel.absentCountt
+    val perc=attendanceViewModel.percentagee
     val rows= listOf(
-        attendanceStats["presentCount"]?.let { ROW("Present", it) },
-        attendanceStats["absentCount"]?.let { ROW("Absent", it) },
-        attendanceStats["percentage"]?.let { ROW("Overall Attendance", it) },
-//        ROW("Present",
-//            if (attendanceStats["presentCount"] == null) {
-//
-//            }
-//        ),
-//        ROW("Absent","87"),
-//        ROW("Overall Attendance","92%")
+//        attendanceStats["presentCount"]?.let { ROW("Present", it) },
+//        attendanceStats["absentCount"]?.let { ROW("Absent", it) },
+//        attendanceStats["percentage"]?.let { ROW("Overall Attendance", it) },
+        ROW("Present",pC),
+        ROW("Absent",aC),
+        ROW("Overall Attendance",perc)
     )
     Column(
          modifier = Modifier
